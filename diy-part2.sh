@@ -12,10 +12,14 @@ sed -i 's/OpenWrt/BPI-R4-5G/g' package/base-files/files/bin/config_generate
 # 3. Imposta il tema grafico Argon come predefinito all'avvio
 sed -i 's/luci-theme-bootstrap/luci-theme-argon/g' feeds/luci/collections/luci/Makefile
 
-# 4. CORREZIONE SICURA DIPENDENZA RICORSIVA (quectel-cm)
-# Rimuove il self-reference (+quectel-cm) SOLO all'interno del pacchetto quectel-cm, senza toccare gli altri
-find package/ feeds/ -name Makefile -exec sed -i '/define Package\/quectel-cm/,/endef/s/+quectel-cm//g' {} +
-find package/ feeds/ -name Makefile -exec sed -i '/define Package\/quectel-cm/,/endef/s/+PACKAGE_quectel-cm//g' {} +
-
-# Rimuove l'eventuale loop anche se presente nei file di configurazione Kconfig puri
-find package/ feeds/ -type f \( -name "Config.in" -o -name "*.Kconfig" \) -exec sed -i 's/select PACKAGE_quectel-cm/# select PACKAGE_quectel-cm/g' {} +
+# 4. SCANSIONE GLOBALE ANTILOOP KCONFIG
+# Individua dinamicamente i file sorgente di quectel-cm sia nei feed che nelle cartelle
+# generate di OpenWrt, rimuovendo l'auto-dipendenza distruttiva.
+echo "Riparazione loop Kconfig per quectel-cm..."
+grep -rlE "define Package/quectel-cm|config PACKAGE_quectel-cm" package/ feeds/ 2>/dev/null | while read -r file; do
+    echo "Fix applicato a: $file"
+    sed -i 's/+quectel-cm//g' "$file"
+    sed -i 's/+PACKAGE_quectel-cm//g' "$file"
+    sed -i 's/select PACKAGE_quectel-cm//g' "$file"
+    sed -i 's/select quectel-cm//g' "$file"
+done
