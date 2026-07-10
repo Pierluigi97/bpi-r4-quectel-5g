@@ -8,3 +8,4 @@ echo 'src-git siriling5g https://github.com/Siriling/5G-Modem-Support.git' >> fe
 
 # Aggiunge il feed per il tema grafico moderno "Argon"
 echo 'src-git argon https://github.com/jerrykuku/luci-theme-argon.git' >> feeds.conf.default
+echo 'src-git passwall_packages https://github.com/xiaorouji/openwrt-passwall-packages.git' >> feeds.conf.default
