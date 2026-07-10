@@ -1,29 +1,22 @@
 #!/bin/bash
-#
-# OpenWrt DIY script part 2 (After Update feeds)
-#
 
-# 1. Modifica l'IP di default del router per evitare conflitti con il modem 5G
-sed -i 's/192.168.1.1/192.168.50.1/g' package/base-files/files/bin/config_generate
+# 1. Trova e patcha il Device Tree del BPI-R4 (gestisce kernel 6.1 e 6.6)
+DTS_FILE="target/linux/mediatek/files-6.6/arch/arm64/boot/dts/mediatek/mt7988a-banana-pi-bpi-r4.dts"
+[ ! -f "$DTS_FILE" ] && DTS_FILE="target/linux/mediatek/files-6.1/arch/arm64/boot/dts/mediatek/mt7988a-banana-pi-bpi-r4.dts"
 
-# 2. Modifica il nome del router (Hostname)
-sed -i 's/OpenWrt/BPI-R4-5G/g' package/base-files/files/bin/config_generate
+if [ -f "$DTS_FILE" ]; then
+    # Disattiva l'interfaccia USB 3.0 sullo slot M.2 Key-B
+    sed -i '/&usb3 {/!b;n;c\\tstatus = "disabled";' "$DTS_FILE"
+    # Forza lo stato 'okay' sul controller PCIe 2 destinato al modem
+    sed -i '/&pcie2 {/!b;n;c\\tpinctrl-names = "default";\n\tpinctrl-0 = <&pcie2_pins>;\n\tstatus = "okay";' "$DTS_FILE"
+fi
 
-# 3. Imposta il tema grafico Argon come predefinito all'avvio
-sed -i 's/luci-theme-bootstrap/luci-theme-argon/g' feeds/luci/collections/luci/Makefile
-
-# 4. BONIFICA TOTALE E AGGRESSIVA DEL FEED SIRILING
-# Entriamo a tappeto in tutti i file del feed incriminato e King-Size eliminiamo il loop.
-echo "Eradicazione chirurgica del loop quectel-cm..."
-find feeds/siriling5g/ package/feeds/siriling5g/ -type f 2>/dev/null | while read -r file; do
-    sed -i 's/+quectel-cm//g' "$file"
-    sed -i 's/+PACKAGE_quectel-cm//g' "$file"
-    sed -i 's/select PACKAGE_quectel-cm//g' "$file"
-    sed -i 's/select quectel-cm//g' "$file"
-done
-
-# 5. IL COLPO DI GRAZIA: ELIMINAZIONE DELLA CACHE DI COMPILAZIONE
-# Rimuovendo la cartella 'tmp', costringiamo OpenWrt a ignorare la vecchia struttura 
-# memorizzata e a rigenerare il file .config-package.in basandosi sui file che abbiamo appena curato.
-echo "Nuking della cartella tmp/ per forzare il rescan totale delle dipendenze..."
-rm -rf tmp
+# 2. Inietta lo script rc.local personalizzato per il PCI Rescan all'avvio del router
+cat << 'EOF' > package/base-files/files/etc/rc.local
+# Attesa boot elettrico del modulo RM551E-GL
+sleep 12
+echo 1 > /sys/bus/pci/devices/0002\:00\:00.0/remove 2>/dev/null
+echo 1 > /sys/bus/pci/rescan
+/etc/init.d/qmodem restart 2>/dev/null
+exit 0
+EOF
