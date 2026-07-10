@@ -12,14 +12,18 @@ sed -i 's/OpenWrt/BPI-R4-5G/g' package/base-files/files/bin/config_generate
 # 3. Imposta il tema grafico Argon come predefinito all'avvio
 sed -i 's/luci-theme-bootstrap/luci-theme-argon/g' feeds/luci/collections/luci/Makefile
 
-# 4. SCANSIONE GLOBALE ANTILOOP KCONFIG
-# Individua dinamicamente i file sorgente di quectel-cm sia nei feed che nelle cartelle
-# generate di OpenWrt, rimuovendo l'auto-dipendenza distruttiva.
-echo "Riparazione loop Kconfig per quectel-cm..."
-grep -rlE "define Package/quectel-cm|config PACKAGE_quectel-cm" package/ feeds/ 2>/dev/null | while read -r file; do
-    echo "Fix applicato a: $file"
+# 4. BONIFICA TOTALE E AGGRESSIVA DEL FEED SIRILING
+# Entriamo a tappeto in tutti i file del feed incriminato e King-Size eliminiamo il loop.
+echo "Eradicazione chirurgica del loop quectel-cm..."
+find feeds/siriling5g/ package/feeds/siriling5g/ -type f 2>/dev/null | while read -r file; do
     sed -i 's/+quectel-cm//g' "$file"
     sed -i 's/+PACKAGE_quectel-cm//g' "$file"
     sed -i 's/select PACKAGE_quectel-cm//g' "$file"
     sed -i 's/select quectel-cm//g' "$file"
 done
+
+# 5. IL COLPO DI GRAZIA: ELIMINAZIONE DELLA CACHE DI COMPILAZIONE
+# Rimuovendo la cartella 'tmp', costringiamo OpenWrt a ignorare la vecchia struttura 
+# memorizzata e a rigenerare il file .config-package.in basandosi sui file che abbiamo appena curato.
+echo "Nuking della cartella tmp/ per forzare il rescan totale delle dipendenze..."
+rm -rf tmp
