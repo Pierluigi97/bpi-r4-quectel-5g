@@ -11,3 +11,6 @@ sed -i 's/OpenWrt/BPI-R4-5G/g' package/base-files/files/bin/config_generate
 
 # 3. Imposta il tema grafico Argon come predefinito all'avvio
 sed -i 's/luci-theme-bootstrap/luci-theme-argon/g' feeds/luci/collections/luci/Makefile
+# Rimuove l'autodipendenza "+quectel-cm" o "+PACKAGE_quectel-cm" dai Makefile per evitare il loop
+find package/ feeds/ -name Makefile -exec sed -i 's/+quectel-cm//g' {} +
+find package/ feeds/ -name Makefile -exec sed -i 's/+PACKAGE_quectel-cm//g' {} +
